@@ -601,11 +601,11 @@ deficit<- gather(deficit,"componente","n", 2:5)
 
 E<-deficit %>% 
   filter(RA_nome!="DF") %>% 
-  ggplot(aes(x=fct_reorder(RA_nome,n), y = n,fill=componente , size=18))+
+  ggplot(aes(x=fct_reorder(RA_nome,n), y = n , size=18))+
   coord_flip()+
   labs( y = 'DHDE', x = 'Faixas Etárias (em anos)',fill='Situação Empregatícia')+
   geom_bar(position = "stack", stat = "identity")+
-  theme(legend.position="right")+theme(legend.text = element_text(size=14))
-#facet_wrap(.~job, ncol=3)
+  theme(legend.position="right")+theme(legend.text = element_text(size=14))+
+facet_wrap(.~componente, ncol=2)
 ggplotly(E)
 
