@@ -12,8 +12,35 @@ output:
          collapsed: yes
          smooth_scroll: no
 ---
-O indicador de déficit habitacional publicado em 2017, levou em consideração os dados censitários de 2010, com a publicação dos microdados da Pesquisa Distrital por Amostra de Domicilios – PDAD em 2018 foi possível elaborar uma relação entre as variáveis utilizadas no Censo 2010 e as variáveis utilizadas na PDAD 2018. 
-O indicador utiliza a metodologia que é definida na Nota Técnica nº. 1 do IPEA Estimativas do déficit habitacional brasileiro (2007-2011) por municípios (2010), para o cálculo do déficit habitacional com dados do Censo 2010. Essa metodologia utiliza como base os conceitos estabelecidos pela Fundação João Pinheiro (FJP).
+# Déficit  Habitacional
+
+O indicador busca calcular resultados para famílias em situação de déficit habitacional e/ou inadequação domiciliar, definidas mais especificamente como: a reposição de estoque, que contempla a necessidade de repor as habitações em função da sua precariedade e desgaste de uso. e o incremento de estoque, que refere-se a demanda por novas moradias decorente de: Coabitação forçada,ônus excessivo com aluguel e adensamento excessivo.
+
+# Metodologia
+
+O indicador Déficit Habitacional foi desenvolvido com base na metodologia definida na [Nota Técnica nº. 1 do IPEA Estimativas do déficit habitacional brasileiro (2007-2011) por municípios (2010)](https://www.ipea.gov.br/portal/images/stories/PDFs/nota_tecnica/130517_notatecnicadirur01.pdf), para o cálculo do déficit habitacional com dados do Censo 2010, que por sua vez, é baseada nos conceitos estabelecidos pela Fundação João Pinheiro (FJP) e o Ministério das Cidades.  
+A base de dados utilizada foi a [PDAD 2018](http://www.codeplan.df.gov.br/microdados-pdad-2018/)(33 Ras), disponibilizada pela CODEPLAN.
+entretanto, a metodologia proposta pela FJP se baseia no questionário da PNAD, mas como ambas pesquisas possuem as questões necessárias para o estudo, fez-se a equivalência entre suas questões.  
+Note, que o indicador é composto por qualquer um de seus componentes ou subcomponentes, de modo que há domicílios nas quais mais de uma situação é observada, porém tal domicílio só é contado no total do déficit uma única vez. Em termos práticos, isso significa que a soma dos componentes é maior do que o valor do indicador do déficit habitacional.
+
+## Habitações Precárias
+
+São consideradas habitações precárias todos aqueles domicílios que estejam classicados como **domícilios improvisados**. Outra categoria que também compõe as habitações precárias é a dos **domicílios Rústicos**, que são aqueles que embora sejam permanenetes não tenham alvenaria ou madeira aparelhada como material predominante nas paredes do domicílio.
+
+## Coabitação
+
+## Ônus excessivo com aluguel
+
+## Adensamento excessivo
+
+
+# Resultados
+
+
+
+
+
+
 ```{r Pacotes, message=FALSE, warning=FALSE, echo=FALSE}
 library(plotly)
 library(tidyverse)
@@ -22,18 +49,16 @@ library(srvyr)
 library(sidrar)
 library(readr)
 library(dplyr)                                
-library(car)                                
-library(rstatix)                                
-library(emmeans)
 library(ggplot2)
 library(knitr)
 library(kableExtra)
 library(htmltools)
+library(plotly)
 
 ```
 
 
-```{r echo=FALSE}
+```{r bases, echo=FALSE,message=FALSE, warning=FALSE}
 pdad_dom_2018 <- read_delim("~/Downloads/dom2018_33ras.csv", 
                             ";", escape_double = FALSE, locale = locale(decimal_mark = ","), 
                             trim_ws = TRUE)%>% 
@@ -255,8 +280,10 @@ options( survey.lonely.psu = "adjust")
 svy2018_pes <- srvyr::as_survey(svy2018_pes)
 
 ```
-```{r tabela}
-kable(habitacao_precaria_ra <- svy2018_pes %>%
+
+```{r tabela, echo=FALSE, warning=FALSE, message=FALSE}
+
+habitacao_precaria_ra <- svy2018_pes %>%
   # Filtar para o responsável, para termos estimativa por domicílios
   srvyr::filter(E02==1) %>%
   # Construir variáveis
@@ -281,11 +308,43 @@ kable(habitacao_precaria_ra <- svy2018_pes %>%
     G041==1~"Aposentado",
     TRUE~"formal")) %>%
   # Agrupar por RA
-  srvyr::group_by(RA_nome,genero,raca,job,domicilio) %>% 
+ srvyr::group_by(RA_nome,job,domicilio) %>% 
   # Calcular os totais para cada situação
   # Criar uma variável auxiliar para contagem
-  srvyr::mutate(count=1) %>%
-  # Calcular o total da população, com seu intervalo de confiança
-  srvyr::summarise(n=survey_total(count, vartype = "ci")))
+  srvyr::summarise(n=survey_total(vartype = "ci"),
+                   # Calcular o percentual da população
+                   pct=survey_mean(vartype = "ci",na.rm = TRUE))
 ```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+tabelahabprecaria<-habitacao_precaria_ra %>% 
+  select(RA_nome,domicilio,n) %>%
+  filter(!is.na(domicilio)) %>% 
+  srvyr::group_by(RA_nome,domicilio) %>% 
+  srvyr::summarise(n=sum(n))
+tabelahabprecaria<- spread(tabelahabprecaria,domicilio,n)
+tabelahabprecaria[is.na(tabelahabprecaria)]<-0
+tabelahabprecaria$'habitação precária' = tabelahabprecaria$`domícílio improvisado`+tabelahabprecaria$`domicílio rústico`
+kable(tabelahabprecaria, col.names = c("Região Administrativa", "domícílio improvisado", "domicílio rústico", "habitação precária")) %>%
+  kable_styling(full_width = F)
+options(digits = 0)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+A<-habitacao_precaria_ra%>% 
+  #filter(!is.na(domicilio)) %>% 
+  ggplot(aes(x=RA_nome, y = pct, fill=domicilio), size=18)+
+  coord_flip()+
+  labs( y = 'DHDE', x = 'Faixas Etárias (em anos)',fill='Situação Empregatícia')+
+  geom_bar(position = "stack", stat = "identity")+
+  theme(legend.position="right")+theme(legend.text = element_text(size=14))+
+  facet_wrap(.~job, ncol=2)
+  
+  
+ggplotly(A)
+```
+
+
+
 
