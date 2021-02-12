@@ -4,6 +4,7 @@ author: "Diretoria do Monitoramento"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
     html_document:
+       base_format: rticles::jss_article
        highlight: textmate
        theme: flatly
        number_sections: yes
@@ -23,16 +24,21 @@ A base de dados utilizada foi a [PDAD 2018](http://www.codeplan.df.gov.br/microd
 entretanto, a metodologia proposta pela FJP se baseia no questionário da PNAD, mas como ambas pesquisas possuem as questões necessárias para o estudo, fez-se a equivalência entre suas questões.  
 Note, que o indicador é composto por qualquer um de seus componentes ou subcomponentes, de modo que há domicílios nas quais mais de uma situação é observada, porém tal domicílio só é contado no total do déficit uma única vez. Em termos práticos, isso significa que a soma dos componentes é maior do que o valor do indicador do déficit habitacional.
 
-## Habitações Precárias
+## Precariedade
 
 São consideradas habitações precárias todos aqueles domicílios que estejam classicados como **domícilios improvisados**. Outra categoria que também compõe as habitações precárias é a dos **domicílios Rústicos**, que são aqueles que embora sejam permanenetes não tenham alvenaria ou madeira aparelhada como material predominante nas paredes do domicílio.
 
 ## Coabitação
 
-## Ônus excessivo com aluguel
+Contempla todas aquelas famílias que declaram viver em domicílios do tipo cômodo,independente da condição de sua ocupação (alugados,próprios ou cedidos), com isso tem-se o subcomponente **Famílias residentes em cômodos**. Há ainda o subcomponente **Famílias conviventes**, que ocorre quando há a presença de mais de um família residindo no mesmo domicílio e com intenção de mudar.
+
+## Ônus excessivo com aluguel  
+
+Caracteriza-se quando o peso pago com a prestação do aluguel no orçamento domiciliar for superior ou igual a 30% da renda domiciliar, sendo excluído do cálculo aquelas famílias cuja renda declarada é 0. Este indicador é calculado exclusivamente para os domicílios cujas rendas domiciliares são de até três salários mínimos. Segundo a metodologia desenvolvida pelo IPEA (2013), não é possível estabelecer que todos os domicílios que declaram a renda domiciliar igual a 0, apresentem-se estruturalmente sem renda (o que os impossibilitaria de fazer o pagamento do aluguel), ou se o fato é apenas conjuntural. Neste caso, optou-se por não incluir tais domicílios no cálculo do déficit.  
 
 ## Adensamento excessivo
 
+Ocorre em domicílios alugados, que possuem mais de três habitantes por cômodo utilizado, permanentemente, como dormitório. 
 
 # Resultados
 
@@ -308,7 +314,7 @@ habitacao_precaria_ra <- svy2018_pes %>%
     G041==1~"Aposentado",
     TRUE~"formal")) %>%
   # Agrupar por RA
- srvyr::group_by(RA_nome,job,domicilio) %>% 
+ srvyr::group_by(RA_nome,domicilio) %>% 
   # Calcular os totais para cada situação
   # Criar uma variável auxiliar para contagem
   srvyr::summarise(n=survey_total(vartype = "ci"),
@@ -326,9 +332,8 @@ tabelahabprecaria<-habitacao_precaria_ra %>%
 tabelahabprecaria<- spread(tabelahabprecaria,domicilio,n)
 tabelahabprecaria[is.na(tabelahabprecaria)]<-0
 tabelahabprecaria$'habitação precária' = tabelahabprecaria$`domícílio improvisado`+tabelahabprecaria$`domicílio rústico`
-kable(tabelahabprecaria, col.names = c("Região Administrativa", "domícílio improvisado", "domicílio rústico", "habitação precária")) %>%
+knitr::kable(tabelahabprecaria,fig. = "Precariedade e seus componentes.",col.names = c("Região Administrativa","domícílio improvisado", "domicílio rústico", "habitação precária"), digits = 0) %>%
   kable_styling(full_width = F)
-options(digits = 0)
 ```
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
@@ -338,8 +343,8 @@ A<-habitacao_precaria_ra%>%
   coord_flip()+
   labs( y = 'DHDE', x = 'Faixas Etárias (em anos)',fill='Situação Empregatícia')+
   geom_bar(position = "stack", stat = "identity")+
-  theme(legend.position="right")+theme(legend.text = element_text(size=14))+
-  facet_wrap(.~job, ncol=2)
+  theme(legend.position="right")+theme(legend.text = element_text(size=14))#+
+  #facet_wrap(.~job, ncol=2)
   
   
 ggplotly(A)
