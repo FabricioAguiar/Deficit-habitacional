@@ -1,17 +1,16 @@
 ---
 title: "Deficit Habitacional"
-author: "Diretoria do Monitoramento"
+author: "Diretoria de Monitoramento e Estudos Territoriais"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
-    html_document:
-       base_format: rticles::jss_article
-       highlight: textmate
-       theme: flatly
-       number_sections: yes
-       toc: yes
-       toc_float:
-         collapsed: yes
-         smooth_scroll: no
+  html_document:
+    highlight: textmate
+    theme: flatly
+    number_sections: yes
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: no
 ---
 # Déficit  Habitacional
 
@@ -21,7 +20,7 @@ O indicador busca calcular resultados para famílias em situação de déficit h
 
 O indicador Déficit Habitacional foi desenvolvido com base na metodologia definida na [Nota Técnica nº. 1 do IPEA Estimativas do déficit habitacional brasileiro (2007-2011) por municípios (2010)](https://www.ipea.gov.br/portal/images/stories/PDFs/nota_tecnica/130517_notatecnicadirur01.pdf), para o cálculo do déficit habitacional com dados do Censo 2010, que por sua vez, é baseada nos conceitos estabelecidos pela Fundação João Pinheiro (FJP) e o Ministério das Cidades.  
 A base de dados utilizada foi a [PDAD 2018](http://www.codeplan.df.gov.br/microdados-pdad-2018/)(33 Ras), disponibilizada pela CODEPLAN.
-entretanto, a metodologia proposta pela FJP se baseia no questionário da PNAD, mas como ambas pesquisas possuem as questões necessárias para o estudo, fez-se a equivalência entre suas questões.  
+entretanto, a metodologia proposta pela FJP se baseia no questionário da PNAD, mas como ambas pesquisas possuem as questões necessárias para o estudo, fez-se a equivalência´ entre suas questões.  
 Note, que o indicador é composto por qualquer um de seus componentes ou subcomponentes, de modo que há domicílios nas quais mais de uma situação é observada, porém tal domicílio só é contado no total do déficit uma única vez. Em termos práticos, isso significa que a soma dos componentes é maior do que o valor do indicador do déficit habitacional.
 
 ## Precariedade
@@ -41,10 +40,6 @@ Caracteriza-se quando o peso pago com a prestação do aluguel no orçamento dom
 Ocorre em domicílios alugados, que possuem mais de três habitantes por cômodo utilizado, permanentemente, como dormitório. 
 
 # Resultados
-
-
-
-
 
 
 ```{r Pacotes, message=FALSE, warning=FALSE, echo=FALSE}
@@ -286,6 +281,96 @@ svy2018_pes <- srvyr::as_survey(svy2018_pes)
 
 ```
 
+## Geral{.tabset .tabset-fade}
+
+Os Gráficos abaixo reúnem em termos absolutos e relativos por região administrativa as informações acerca do déficit habitacional urbano. O Distrito Federal, em 2018, apresentou um total de 102.984 (11,6%) domicílios que se encontrem em alguma das situações que compõe o déficit.  
+Em termos absolutos, Ceilândia se mostra a região administrativa com déficit mais alto ,seguida por Taguatinga,Samambaia e Planaltina.  
+Em termos relativos, comparados com o total de domicilios da região, a SCIA/Estrutural é a região no qual o deficit tem uma proporção maior, seguida pelo Varjão, SIA e Sobradinho II.
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Fazer todos os cálculos de uma vez para verificar quem esta em, pelo menos, alguma situação ####
+deficit_ra <- svy2018_pes %>%
+  srvyr::mutate(novo_dom=case_when(E21==1~1,
+                                   TRUE~0)) %>% 
+  srvyr::group_by(A01nficha) %>%
+  srvyr::mutate(novo_dom=sum(novo_dom)) %>% 
+  srvyr::ungroup() %>% 
+  srvyr::filter(E02==1) %>%
+  srvyr::mutate(
+    # Domicílios rústicos
+    dom_rust=case_when(B01==1&B08>=4&B02!=3~1,
+                       TRUE~0),
+    # Domicílios improvisados
+    dom_imp=case_when(B01==2~1,
+                      TRUE~0),
+    # Uma ou outra situação
+    habit_prec=case_when(dom_rust==1|dom_imp==1~1,
+                         TRUE~0),
+    # Familias conviventes
+    fam_conv=case_when(B01==1&A01nfamilias!=1&novo_dom>0~1,
+                       TRUE~0),
+    # Cômodos
+    comodo=case_when(B02==3&B01==1~1,
+                     TRUE~0),
+    # Uma ou outra situação
+    cohabit_familiar=case_when(fam_conv==1|comodo==1~1,
+                               TRUE~0),
+    # Ônus aluguel
+    onus_aluguel=case_when(B03==3&B02!=3&B01==1&(B05*inflator_aluguel>=0.3*renda_dom*inflator_geral)&renda_dom*inflator_geral>0&(renda_dom*inflator_geral)<=3*954&!B05 %in% c(77777,88888)~1,
+                           TRUE~0),
+    # Adensamento
+    adens=case_when(B03==3&B01==1&A01npessoas/B12>3~1,
+                    TRUE~0),
+    # Qualquer situação de déficit
+    deficit_habit=case_when(habit_prec==1|cohabit_familiar==1|onus_aluguel==1|adens==1~1,
+                            TRUE~0))
+```
+
+
+###  Gráfico Déficit Habitacional absoluto
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+AA<-deficit_ra %>%
+    # Agrupar por RA
+  srvyr::group_by(RA_nome) %>% 
+  # Calcular o déficit habitacional
+  srvyr::cascade(deficit_habit=survey_total(deficit_habit,vartype=c("cv")),
+                 .fill="DF") %>% 
+  filter(RA_nome!="DF") %>% 
+  ggplot(aes(x=fct_reorder(RA_nome,deficit_habit), y = deficit_habit))+
+  coord_flip()+
+  labs( y = 'N° de domicílios', x = 'Região Administrativa')+
+  geom_bar(position = "stack", stat = "identity")+
+  theme(legend.position="right")+theme(legend.text = element_text(size=14))
+
+ggplotly(AA)
+
+```
+
+###  Gráfico Déficit Habitacional Relativo
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+AB<-deficit_ra %>%
+    # Agrupar por RA
+  srvyr::group_by(RA_nome) %>% 
+  # Calcular o déficit habitacional
+  srvyr::cascade(deficit_habit=survey_mean(deficit_habit,vartype=c("cv")),
+                 .fill="DF") %>% 
+  filter(RA_nome!="DF") %>% 
+  ggplot(aes(x=fct_reorder(RA_nome,deficit_habit), y = deficit_habit))+
+  coord_flip()+
+  labs( y = 'N° de domicílios', x = 'Região Administrativa')+
+  geom_bar(position = "stack", stat = "identity")+
+  theme(legend.position="right")+theme(legend.text = element_text(size=14))
+
+ggplotly(AB)
+```
+
+
+## Precariedade 
 ```{r tabela, echo=FALSE, warning=FALSE, message=FALSE}
 
 habitacao_precaria_ra <- svy2018_pes %>%
@@ -296,8 +381,7 @@ habitacao_precaria_ra <- svy2018_pes %>%
                   # Domicílios rústicos
                   case_when(B01==1&B08>=4&B02!=3~"domicílio rústico",
                             # Domicílios improvisados
-                            B01==2~"domícílio improvisado"
-                            )) %>% 
+                            B01==2~"domícílio improvisado")) %>% 
   # Uma ou outra situação
   mutate(genero=case_when(E03==1~"Masculino",
                           E03==2~"Feminino"))%>%
@@ -312,63 +396,238 @@ habitacao_precaria_ra <- svy2018_pes %>%
     G13==88~"Não respondeu",
     G05%in% c(4,99) & G041!=1~"Desempregado",
     G041==1~"Aposentado",
-    TRUE~"formal")) %>%
-  # Agrupar por RA
- srvyr::group_by(RA_nome,domicilio,genero,job,raca) %>% 
-  # Calcular os totais para cada situação
-  # Criar uma variável auxiliar para contagem
-  srvyr::summarise(n=survey_total(vartype = "ci"),
-                   # Calcular o percentual da população
-                   pct=survey_mean(vartype = "ci",na.rm = TRUE))
+    TRUE~"formal")) 
+
 ```
+### Composição{.tabset .tabset-fade}
 
+Os resultados do componente de precariedade reunidos nos gráficos e tabelas abaixo trazem informações acerca da qualidade do domicílios frente a metodologia abordada. O gráfico a seguir trás informações ordenadas sobre a precariedade dos domicilios nas regiões administrativas e como é caracterizada esta composição(rústico/improvisado).
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
-tabelahabprecaria<-habitacao_precaria_ra %>% 
-  select(RA_nome,domicilio,n) %>%
-  filter(!is.na(domicilio)) %>% 
-  srvyr::group_by(RA_nome,domicilio) %>% 
-  srvyr::summarise(n=sum(n))
-tabelahabprecaria<- spread(tabelahabprecaria,domicilio,n)
-tabelahabprecaria[is.na(tabelahabprecaria)]<-0
-tabelahabprecaria$'habitação precária' = tabelahabprecaria$`domícílio improvisado`+tabelahabprecaria$`domicílio rústico`
-knitr::kable(tabelahabprecaria,fig. = "Precariedade e seus componentes.",col.names = c("Região Administrativa","domícílio improvisado", "domicílio rústico", "habitação precária"), digits = 0) %>%
-  kable_styling(full_width = F)
-```
+Estimam-se cerca de 29.075 habitações precárias no Distrito Federal, o que representa % dos domicilios estimados.Sendo Planaltina, a regiao com mais habitaçoes precarias, seguida por Sobradinho II, SCIA/Estrutural e o Plano Piloto.
 
+####  Gráfico Precariedade e sua composição
 ```{r, echo=FALSE}
 A<-habitacao_precaria_ra %>% 
+    srvyr::group_by(RA_nome,domicilio) %>%
+   srvyr::summarise(n=survey_total(vartype = "ci")) %>% 
   filter(!is.na(domicilio)) %>%
   ggplot(aes(fill =domicilio,x=fct_reorder(RA_nome,n, .fun=sum,na.rm=FALSE,desc=TRUE), y=n))+       geom_bar( stat = "identity")+
   coord_flip()+
-  ggtitle("Precariedade e suas clasificações - Região Administrativas")+
-  labs( y = 'N° de domicílios', x = 'Região Administrativa',fill='Classificação')+
+  ggtitle("Precariedade e seus componentes - Região Administrativas")+
+  labs( y = 'N° de domicílios', x = 'Região Administrativa',fill='Componentes')+
   theme(legend.position="right")+theme(legend.text = element_text(size=14))
 
 ggplotly(A)
 ```
+
+
+#### Tabela Precariedade e sua composição
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+tabelahabprecaria<-habitacao_precaria_ra %>%
+  srvyr::group_by(RA_nome,domicilio) %>% 
+  # Calcular os totais para cada situação
+  # Criar uma variável auxiliar para contagem
+  srvyr::summarise(n=survey_total(vartype = "ci"))
+  #filter(!is.na(domicilio))
+tabelahabprecaria<- spread(tabelahabprecaria[,c(-4,-5)],domicilio,n)
+tabelahabprecaria[is.na(tabelahabprecaria)]<-0
+tabelahabprecaria$'habitação precária' = tabelahabprecaria$`domícílio improvisado`+tabelahabprecaria$`domicílio rústico`
+#tabelahabprecaria <-tabelahabprecaria %>% adorn_totals(name ="**DF**")
+knitr::kable(tabelahabprecaria,caption = "Precariedade e seus componentes",col.names = c("Região Administrativa","domícílio improvisado", "domicílio rústico","demais domicílios", "habitação precária"), digits = 0) %>% 
+kable_styling(full_width = FALSE)
+
+```
+
+### Subcomponentes {.tabset .tabset-fade}
+
+Em grande parte da regiões o subcomponente de domicílios improvisados
+mostram que o Embora tenha sido observado no período entre 2007 e 2011 o aumento de quase 10% no número de domicílios, houve queda de 1,2 pontos percentuais no déficit, de 10% para 8,8% do total de domicílios estimados do país. Em números absolutos o déficit habitacional representa cerca de 5,4 milhões de domicílios em 2011, contra 5,6 milhões em 2007.
+
+#### Domicílios Rústicos
 ```{r, echo=FALSE}
-B<-habitacao_precaria_ra %>% 
-  filter(!is.na(domicilio)) %>%
-  ggplot(aes(fill =domicilio,x=fct_reorder(RA_nome,pct, .fun=sum,na.rm=FALSE,desc=TRUE), y=pct))+       geom_bar( stat = "identity")+
+A1<-habitacao_precaria_ra %>% 
+    srvyr::group_by(RA_nome,domicilio) %>%
+   srvyr::summarise(n=survey_total(vartype = "ci")) %>% 
+  filter(domicilio=="domicílio rústico") %>%
+  ggplot(aes(x=fct_reorder(RA_nome,n), y=n))+
+  geom_bar( stat = "identity")+
   coord_flip()+
-  ggtitle("Precariedade e suas clasificações - Região Administrativas")+
-  labs( y = 'N° de domicílios', x = 'Região Administrativa',fill='Classificação')+
+  labs( y = 'N° de domicílios', x = 'Região Administrativa',fill='Componentes')+
+  theme(legend.position="right")+theme(legend.text = element_text(size=14))
+
+ggplotly(A1)
+```
+
+#### Domicílios Improvisados
+```{r, echo=FALSE}
+A2<-habitacao_precaria_ra %>% 
+    srvyr::group_by(RA_nome,domicilio) %>%
+   srvyr::summarise(n=survey_total(vartype = "ci")) %>% 
+  filter(domicilio=="domícílio improvisado") %>%
+  ggplot(aes(x=fct_reorder(RA_nome,n), y=n))+
+  geom_bar( stat = "identity")+
+  coord_flip()+
+  labs( y = 'N° de domicílios', x = 'Região Administrativa',fill='Componentes')+
+  theme(legend.position="right")+theme(legend.text = element_text(size=14))
+
+ggplotly(A2)
+```
+### precariedade em percentuais {.tabset .tabset-fade}
+
+
+#### Gráfico precariedade em percentuais
+```{r, echo=FALSE}
+B<-habitacao_precaria_ra %>%
+  srvyr::group_by(RA_nome,domicilio) %>% 
+  # Calcular os totais para cada situação
+  # Criar uma variável auxiliar para contagem
+  # Calcular o total da população, com seu intervalo de confiança
+  srvyr::summarise(pct=survey_mean(vartype=c("cv"))) %>%
+    filter(!is.na(domicilio)) %>% 
+  ggplot(aes(x=fct_reorder(RA_nome,pct, .fun=sum,na.rm=FALSE,desc=TRUE), y = pct, fill =domicilio), size=18)+
+  coord_flip()+
+  labs( y = 'N° de domicílios', 'Região Administrativa',fill='Componentes')+
+  geom_bar(position = "stack", stat = "identity")+
   theme(legend.position="right")+theme(legend.text = element_text(size=14))
 
 ggplotly(B)
 ```
+#### Tabela precariedade em percentuais
 
 ```{r, echo=FALSE}
-B<-habitacao_precaria_ra %>% 
-  filter(!is.na(domicilio)) %>%
-  ggplot(aes(fill =domicilio,x=fct_reorder(RA_nome,n, .fun=sum,na.rm=FALSE,desc=TRUE), y=n))+       geom_bar( stat = "identity")+
-  coord_flip()+
-  ggtitle("Precariedade e suas clasificações - Região Administrativas")+
-  labs( y = 'N° de domicílios', x = 'Região Administrativa',fill='Classificação')+
-  theme(legend.position="right")+theme(legend.text = element_text(size=14))+
-  facet_wrap(.~job, ncol=3)
-
-ggplotly(B)
+tabelahabprecariapct<-habitacao_precaria_ra %>%
+  srvyr::group_by(RA_nome,domicilio) %>% 
+  # Calcular os totais para cada situação
+  # Criar uma variável auxiliar para contagem
+  srvyr::summarise(pct=survey_mean(vartype=c("cv"))) %>% 
+  filter(!is.na(domicilio))
+tabelahabprecariapct<- spread(tabelahabprecariapct[,-4],domicilio,pct)
+tabelahabprecariapct[is.na(tabelahabprecariapct)]<-0
+tabelahabprecariapct$'habitação precária' = tabelahabprecariapct$`domícílio improvisado`+tabelahabprecariapct$`domicílio rústico`
+knitr::kable(tabelahabprecariapct,col.names = c("Região Administrativa","domícílio improvisado", "domicílio rústico", "habitação precária"), digits = 2) %>% 
+kable_styling(full_width = FALSE)
 ```
 
+## Coabitação  
+
+
+```{r,echo=FALSE}
+ # Coabitação Familiar ####
+cohabit_familiar_ra <- svy2018_pes %>%
+  # Verificar quem declarou ter interesse em constituir um novo domicílio no DF
+  srvyr::mutate(novo_dom=case_when(E21==1~1,
+                                   TRUE~0)) %>% 
+  # Agrupar por domicílio
+  srvyr::group_by(A01nficha) %>%
+  # Somar a quantidade de moradores por domicílio com intenção de construção
+  srvyr::mutate(novo_dom=sum(novo_dom)) %>% 
+  # Desagrupar
+  srvyr::ungroup() %>%
+  # Filtrar para o responsável (estatística por domicílio)
+  srvyr::filter(E02==1) %>% 
+  srvyr::mutate(situacao=case_when(B01==1&A01nfamilias!=1&novo_dom>0~"Famílias conviventes",
+                       B02==3&B01==1~"Cômodo",
+                            TRUE~"Demais"))%>%
+  mutate(genero=case_when(E03==1~"Masculino",
+                          E03==2~"Feminino"))%>%
+  mutate(raca=case_when(E04==1~"Branca",
+                        E04==2~"Negra", #preto
+                        E04==3~"Amarela",
+                        E04==4~"Negra", #Parda
+                        E04==5~"Indígena"))%>%
+  mutate(job=case_when(
+    G13==3 & G08 %in% c(1,2,4,14,15,16)~"informal",
+    G08 %in% c(5,6,7,8) & G09==2~"informal",
+    G13==88~"Não respondeu",
+    G05%in% c(4,99) & G041!=1~"Desempregado",
+    G041==1~"Aposentado",
+    TRUE~"formal"))
+```
+
+### Composição  {.tabset .tabset-fade}
+
+#### Gráfico Coabitação e seus componentes
+
+```{r, echo=FALSE}
+C<-cohabit_familiar_ra %>% 
+    srvyr::group_by(RA_nome,situacao) %>%
+   srvyr::summarise(n=survey_total(vartype = "ci")) %>% 
+    filter(situacao != "Demais") %>%
+  ggplot(aes(fill =situacao,x=fct_reorder(RA_nome,n, .fun=sum,na.rm=FALSE,desc=TRUE), y=n))+       geom_bar( stat = "identity")+
+  coord_flip()+
+  labs( y = 'N° de domicílios', x = 'Região Administrativa',fill='Componentes')#+
+  #theme(legend.position="right")+theme(legend.text = element_text(size=14))
+
+ggplotly(C)
+```
+
+#### Tabela Coabitação e seus componentes
+```{r,echo=FALSE}
+tabelacoabit<-cohabit_familiar_ra %>% 
+# Agrupar por RA
+  srvyr::group_by(RA_nome,situacao) %>% 
+srvyr::summarise(n=survey_total(vartype = "ci"))
+  #filter(!is.na(domicilio))
+tabelacoabit<- spread(tabelacoabit[,c(-4,-5)],situacao,n)
+tabelacoabit[is.na(tabelacoabit)]<-0
+tabelacoabit$'coabitaçao' = tabelacoabit$Cômodo+tabelacoabit$`Famílias conviventes`
+knitr::kable(tabelacoabit,col.names = c("Região Administrativa","Cômodo", "demais domicílios","Famílias conviventes","Coabitação"), digits = 0) %>% 
+kable_styling(full_width = FALSE)
+```
+### Coabitação em percentuais {.tabset .tabset-fade}
+
+
+
+#### Coabitação em percentuais
+
+```{r, echo=FALSE}
+D<-cohabit_familiar_ra %>% 
+    srvyr::group_by(RA_nome,situacao) %>%
+    srvyr::summarise(pct=survey_mean(vartype = "cv")) %>% 
+    filter(situacao != "Demais") %>%
+  ggplot(aes(fill =situacao,x=fct_reorder(RA_nome,pct, .fun=sum,na.rm=FALSE,desc=TRUE), y=pct))+       geom_bar( stat = "identity")+
+  coord_flip()+
+  labs( y = 'N° de domicílios', x = 'Região Administrativa',fill='Componentes')+
+  theme(legend.position="right")+theme(legend.text = element_text(size=14))
+
+ggplotly(D)
+```
+#### Tabela Coabitação e seus componentes
+
+```{r,echo=FALSE}
+tabelacoabitpct<-cohabit_familiar_ra %>% 
+# Agrupar por RA
+  srvyr::group_by(RA_nome,situacao) %>% 
+srvyr::summarise(n=survey_mean(vartype = "cv")) %>% 
+  filter(situacao != "Demais")
+tabelacoabitpct<- spread(tabelacoabitpct[,-4],situacao,n)
+tabelacoabitpct[is.na(tabelacoabitpct)]<-0
+tabelacoabitpct$'coabitaçao' = tabelacoabitpct$Cômodo+tabelacoabitpct$`Famílias conviventes`
+knitr::kable(tabelacoabitpct ,col.names = c("Região Administrativa","Cômodo","Famílias conviventes","Coabitação"), digits = 4)%>% 
+kable_styling(full_width = FALSE)
+```
+
+
+## Ônus excessivo com aluguel 
+
+```{r}
+onus_aluguel_ra <- svy2018_pes %>%
+  # Aplicar filtros
+  srvyr::filter(
+    # Para o responsável (estatística por domicílio)
+    E02==1,
+    # Renda domiciliar positiva
+    renda_dom*inflator_geral>0,
+    # Renda até três salários mínimos
+    (renda_dom*inflator_geral)<=3*954,
+    # Retirar valores inválidos para aluguel
+    !B05 %in% c(77777,88888),
+    # Manter somente domicílios com renda informada
+    is.na(renda_dom)==F) %>% 
+  # Calcular o ônus do aluguel
+  srvyr::mutate(onus_aluguel=case_when(B03==3&B02!=3&B01==1&(B05*inflator_aluguel)>=(0.3*renda_dom*inflator_geral)~1,
+                                       TRUE~0))
+```
+
+
+## Adensamento excessivo
