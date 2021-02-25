@@ -12,8 +12,87 @@ output:
       collapsed: yes
       smooth_scroll: no
 ---
-# Déficit  Habitacional
 
+
+# Introdução {.tabset .tabset-fade}
+
+## Quadro Resumo
+<style type="text/css">
+.tg  {border-collapse:collapse;border-color:#ccc;border-spacing:0;margin:0px auto;}
+.tg td{background-color:#fff;border-color:#ccc;border-style:solid;border-width:1px;color:#333;
+  font-family:Arial, sans-serif;font-size:14px;overflow:hidden;padding:10px 5px;word-break:normal;}
+.tg th{background-color:#f0f0f0;border-color:#ccc;border-style:solid;border-width:1px;color:#333;
+  font-family:Arial, sans-serif;font-size:14px;font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
+.tg .tg-yzzw{border-color:#656565;color:#000000;font-family:Arial, Helvetica, sans-serif !important;;font-size:12px;text-align:left;
+  vertical-align:top}
+@media screen and (max-width: 767px) {.tg {width: auto !important;}.tg col {width: auto !important;}.tg-wrap {overflow-x: auto;-webkit-overflow-scrolling: touch;margin: auto 0px;}}</style>
+<div class="tg-wrap"><table class="tg">
+<tbody>
+  <tr>
+    <td class="tg-yzzw">Objetivo</td>
+    <td class="tg-yzzw">Orientar a política habitacional quanto a necessidade de provimento de domicílios, em especial os de interesse social</td>
+  </tr>
+  <tr>
+    <td class="tg-yzzw">Descrição</td>
+    <td class="tg-yzzw">Indica deficiências no estoque de moradia regionalizada no território do Distrito Federal</td>
+  </tr>
+  <tr>
+    <td class="tg-yzzw">Palavras-Chave</td>
+    <td class="tg-yzzw"><span style="background-color:transparent">Déficit Habitacional, PDAD 2018, </span></td>
+  </tr>
+  <tr>
+    <td class="tg-yzzw">Unidade de medida</td>
+    <td class="tg-yzzw"><span style="background-color:transparent">(n° de domicílios)</span></td>
+  </tr>
+  <tr>
+    <td class="tg-yzzw">Tipo de indicador</td>
+    <td class="tg-yzzw">a definir</td>
+  </tr>
+  <tr>
+    <td class="tg-yzzw">Comportamento desejado</td>
+    <td class="tg-yzzw">Decrescente</td>
+  </tr>
+  <tr>
+    <td class="tg-yzzw">Fonte metodológica:</td>
+    <td class="tg-yzzw">[FURTADO, B.; LIMA NETO, V.; KRAUSE, C. Estimativas do déficit habitacional brasileiro (2007-2011) por municípios (2010). Brasília: Ipea, 2013. (Nota Técnica, nº.. 1)](https://www.ipea.gov.br/portal/images/stories/PDFs/nota_tecnica/130517_notatecnicadirur01.pdf).</td>
+  </tr>
+  <tr>
+    <td class="tg-yzzw">Forma de Cálculo:</td>
+    <td class="tg-yzzw">Habitações precárias (C1) + Famílias em Coabitação (C2) + Famílias em ônus excessivo com aluguel (C3) + Domicílios alugados com adensamento excessivo (C4)</td>
+  </tr>
+  <tr>
+    <td class="tg-yzzw">Fonte de dados</td>
+    <td class="tg-yzzw">PDAD 2018</td>
+  </tr>
+  <tr>
+    <td class="tg-yzzw">Data da aferição dos Dados</td>
+    <td class="tg-yzzw">2º semestre de 2019</td>
+  </tr>
+  <tr>
+    <td class="tg-yzzw">Instrumento de aferição dos dados</td>
+    <td class="tg-yzzw">Entrevistas amostrais</td>
+  </tr>
+  <tr>
+    <td class="tg-yzzw">Periodicidade dos dados</td>
+    <td class="tg-yzzw">Bianual</td>
+  </tr>
+  <tr>
+    <td class="tg-yzzw">Desagregação</td>
+    <td class="tg-yzzw">Região Administrativa</td>
+  </tr>
+  <tr>
+    <td class="tg-yzzw">Responsável pelo cálculo do indicador</td>
+    <td class="tg-yzzw">DIMOT/SEDUH</td>
+  </tr>
+  <tr>
+    <td class="tg-yzzw">Última atualização</td>
+    <td class="tg-yzzw">1° semestre de 2021</td>
+  </tr>
+</tbody>
+</table></div>
+
+
+## Contexto
 O indicador busca calcular resultados para famílias em situação de déficit habitacional e/ou inadequação domiciliar, definidas mais especificamente como: a reposição de estoque, que contempla a necessidade de repor as habitações em função da sua precariedade e desgaste de uso. e o incremento de estoque, que refere-se a demanda por novas moradias decorente de: Coabitação forçada,ônus excessivo com aluguel e adensamento excessivo.
 
 # Metodologia
@@ -324,7 +403,24 @@ deficit_ra <- svy2018_pes %>%
                     TRUE~0),
     # Qualquer situação de déficit
     deficit_habit=case_when(habit_prec==1|cohabit_familiar==1|onus_aluguel==1|adens==1~1,
-                            TRUE~0))
+                            TRUE~0),
+    deficit_habit2=case_when(habit_prec==1&cohabit_familiar==1&onus_aluguel==1&adens==1~"todos",
+           habit_prec==1&cohabit_familiar==0&onus_aluguel==0&adens==0~"Precariedade",
+           habit_prec==0&cohabit_familiar==1&onus_aluguel==0&adens==0~"coabitacao",
+           habit_prec==0&cohabit_familiar==0&onus_aluguel==1&adens==0~"onus",
+           habit_prec==0&cohabit_familiar==0&onus_aluguel==0&adens==1~"adensamento",
+           habit_prec==1 & cohabit_familiar==1 ~ "precariedade e coabitacao",
+           habit_prec==1 & onus_aluguel==1 ~ "precariedade e onus",
+           habit_prec==1 & adens==1 ~ "precariedade e onus",
+           cohabit_familiar==1 & onus_aluguel==1 ~ "Coabitacao e onus",
+           cohabit_familiar==1 & adens==1 ~ "Coabitacao e adensamento",
+           onus_aluguel==1 & adens==1 ~ "onus e adensamento",
+           habit_prec==1 & cohabit_familiar==1 & onus_aluguel==1~"precariedade, coabitacao, onus",
+           habit_prec==1 & cohabit_familiar==1 & adens==1~"precariedade, coabitacao, adensamento",
+           habit_prec==1 & onus_aluguel==1 & adens==1~"precariedade, onus, adensamento",
+           cohabit_familiar==1 & onus_aluguel==1 & adens==1~"coabitacao,onus, adensamento",
+                          TRUE~"nenhum"))
+
 ```
 
 
@@ -369,6 +465,40 @@ AB<-deficit_ra %>%
 ggplotly(AB)
 ```
 
+
+###  Gráfico Composição do Déficit Habitacional
+
+```{r,echo=FALSE, warning=FALSE, message=FALSE}
+deficitc<-deficit_ra %>% 
+    srvyr::group_by(RA_nome,deficit_habit2) %>% 
+  # Calcular os totais para cada situação
+  srvyr::mutate(count=1) %>%
+  # Calcular o total da população, com seu intervalo de confiança
+  srvyr::summarise(n=survey_total(count, vartype = "ci")) %>% 
+  srvyr::filter(deficit_habit2!="nenhum") %>%
+  ggplot(aes(fill=deficit_habit2,x=fct_reorder(RA_nome,n, .fun=sum,na.rm=FALSE,desc=TRUE), y=n))+
+  geom_bar( stat = "identity")+
+  coord_flip()+
+  labs( y = 'N° de domicílios', x = 'Região Administrativa')#+
+#theme(legend.position="right")+theme(legend.text = element_text(size=14))
+
+ggplotly(deficitc)
+```
+###  Tabela Composição do Déficit Habitacional
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+deficitcomp<-deficit_ra %>%
+  srvyr::group_by(RA_nome,deficit_habit2) %>% 
+  # Calcular os totais para cada situação
+  srvyr::mutate(count=1) %>%
+  # Calcular o total da população, com seu intervalo de confiança
+  srvyr::summarise(n=survey_total(count, vartype = "ci")) %>% 
+  filter(deficit_habit2!="nenhum")
+deficitcomp<- spread(deficitcomp[,c(-4,-5)],deficit_habit2,n)
+deficitcomp[is.na(deficitcomp)]<-0
+knitr::kable(deficitcomp, digits = 0) %>% 
+  kable_styling(full_width = FALSE)
+```
 
 ## Precariedade 
 ```{r tabela, echo=FALSE, warning=FALSE, message=FALSE}
@@ -607,10 +737,9 @@ knitr::kable(tabelacoabitpct ,col.names = c("Região Administrativa","Cômodo","
 kable_styling(full_width = FALSE)
 ```
 
+## Ônus excessivo com aluguel {.tabset .tabset-fade} 
 
-## Ônus excessivo com aluguel 
-
-```{r}
+```{r,echo=FALSE}
 onus_aluguel_ra <- svy2018_pes %>%
   # Aplicar filtros
   srvyr::filter(
@@ -629,5 +758,77 @@ onus_aluguel_ra <- svy2018_pes %>%
                                        TRUE~0))
 ```
 
+### Gráfico ônus excessivo com aluguel
 
-## Adensamento excessivo
+```{r, echo=FALSE}
+E<-onus_aluguel_ra %>% 
+    srvyr::group_by(RA_nome,onus_aluguel) %>%
+   srvyr::summarise(n=survey_total(vartype = "ci")) %>% 
+    #filter(onus_aluguel == 1) %>%
+  ggplot(aes(x=fct_reorder(RA_nome,n, .fun=sum,na.rm=FALSE,desc=TRUE), y=n))+
+  geom_bar( stat = "identity")+
+  coord_flip()+
+  labs( y = 'N° de domicílios', x = 'Região Administrativa')#+
+  #theme(legend.position="right")+theme(legend.text = element_text(size=14))
+
+ggplotly(E)
+```
+### Tabela ônus excessivo com aluguel
+
+```{r, echo=FALSE}
+tabelaonus<-onus_aluguel_ra %>% 
+# Agrupar por RA
+  srvyr::group_by(RA_nome,onus_aluguel) %>% 
+srvyr::summarise(n=survey_total(vartype = "ci"))
+  #filter(!is.na(domicilio))
+tabelaonus<- spread(tabelaonus[,c(-4,-5)],onus_aluguel,n)
+tabelaonus[is.na(tabelaonus)]<-0
+knitr::kable(tabelaonus,col.names = c("Região Administrativa","sem ônus", "ônus excessivo"), digits = 0) %>% 
+kable_styling(full_width = FALSE)
+```
+
+## Adensamento excessivo {.tabset .tabset-fade} 
+
+```{r, echo=FALSE}
+adensamento_excessivo_ra <- svy2018_pes %>%
+  # Para o responsável (estatística por domicílio)
+  srvyr::filter(E02==1) %>% 
+  # Calcular o adensamento excessivo
+  srvyr::mutate(adens=case_when(B03==3&B01==1&A01npessoas/B12>3~1,
+                                TRUE~0))
+```
+
+
+### Gráfico Adensamento excessivo
+```{r, echo=FALSE}
+G<-adensamento_excessivo_ra %>% 
+  # Agrupar por RA
+  srvyr::group_by(RA_nome,adens) %>%
+  # Calcular os totais
+  srvyr::summarise(n=survey_total(vartype = "ci")) %>% 
+    filter(adens ==1) %>%
+  ggplot(aes(x=fct_reorder(RA_nome,n), y=n))+
+  geom_bar( stat = "identity")+
+  coord_flip()+
+  labs( y = 'N° de domicílios', x = 'Região Administrativa')#+
+  #theme(legend.position="right")+theme(legend.text = element_text(size=14))
+
+ggplotly(G)
+```
+
+### Tabela Adensamento excessivo
+```{r, echo=FALSE}
+tabelaadens<-adensamento_excessivo_ra %>% 
+# Agrupar por RA
+  srvyr::group_by(RA_nome,adens) %>%
+  # Calcular os totais
+  srvyr::summarise(n=survey_total(vartype = "ci"))
+  #filter(!is.na(domicilio))
+tabelaadens<- spread(tabelaadens[,c(-4,-5)],adens,n)
+tabelaadens[is.na(tabelaadens)]<-0
+knitr::kable(tabelaadens,col.names = c("Região Administrativa","sem adensamento", "adensamento excessivo"), digits = 0) %>% 
+kable_styling(full_width = FALSE)
+```
+
+```
+
