@@ -894,7 +894,7 @@ adensamento_excessivo_ra <- svy2018_pes %>%
 ```
 
 
-### Gráfico Adensamento excessivo
+#### Gráfico Adensamento excessivo
 ```{r, echo=FALSE}
 G<-adensamento_excessivo_ra %>% 
   # Agrupar por RA
@@ -911,7 +911,7 @@ G<-adensamento_excessivo_ra %>%
 ggplotly(G, tooltip = "text")
 ```
 
-### Gráfico Adensamento excessivo em percentuais
+#### Gráfico Adensamento excessivo em percentuais
 ```{r, echo=FALSE}
 G<-adensamento_excessivo_ra %>% 
   # Agrupar por RA
@@ -927,7 +927,7 @@ G<-adensamento_excessivo_ra %>%
 
 ggplotly(G, tooltip = "text")
 ```
-### Perfil da população em Adensamento excessivo
+#### Perfil da população em Adensamento excessivo
 ```{r, echo=FALSE}
 perfiladens<-deficit_ra %>% 
   srvyr::group_by(adens,genero,job,raca) %>% 
